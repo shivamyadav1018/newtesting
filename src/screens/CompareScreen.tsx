@@ -184,11 +184,11 @@ function ManualOffers({offers, setOffers}: {offers: ComparisonOffer[]; setOffers
       {offers.length < 3 ? (
         <View style={[styles.offerForm, {borderColor: colors.border}]}>
           <Text style={[styles.formTitle, {color: colors.text}]}>Add offer {offers.length + 1}</Text>
-          <Controller control={control} name="name" render={({field}) => <FormField label="Offer name" placeholder="e.g. Bank A" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.name?.message} />} />
-          <Controller control={control} name="principal" render={({field}) => <FormField label="Loan amount" prefix="₹" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(formatCurrencyInput(value))} error={errors.principal?.message} />} />
-          <Controller control={control} name="interestRate" render={({field}) => <FormField label="Annual rate" suffix="%" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.interestRate?.message} />} />
+          <Controller control={control} name="name" render={({field}) => <FormField label="Offer name" hint="Example: Bank A" placeholder="Bank A" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.name?.message} />} />
+          <Controller control={control} name="principal" render={({field}) => <FormField label="Loan amount" hint="Example: ₹25,00,000" prefix="₹" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(formatCurrencyInput(value))} error={errors.principal?.message} />} />
+          <Controller control={control} name="interestRate" render={({field}) => <FormField label="Annual rate" hint="Example: 8.5% per year" suffix="%" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.interestRate?.message} />} />
           <Controller control={control} name="tenureUnit" render={({field}) => <SegmentedControl value={field.value} onChange={field.onChange} options={[{label: 'Years', value: 'years'}, {label: 'Months', value: 'months'}]} />} />
-          <Controller control={control} name="tenure" render={({field}) => <FormField label="Tenure" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.tenure?.message} />} />
+          <Controller control={control} name="tenure" render={({field}) => <FormField label="Tenure" hint="Example: 20 years" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.tenure?.message} />} />
           <AppButton title="Add to comparison" variant="secondary" onPress={handleSubmit(addOffer)} icon={<Plus color={colors.text} size={18} />} />
         </View>
       ) : null}

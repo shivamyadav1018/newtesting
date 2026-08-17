@@ -17,6 +17,7 @@ import {useNavigation, type NavigationProp} from '@react-navigation/native';
 import {AppButton} from '../components/AppButton';
 import {EMISummaryCard} from '../components/EMISummaryCard';
 import {FormField} from '../components/FormField';
+import {FormGrid} from '../components/FormGrid';
 import {LoanTypePicker} from '../components/LoanTypePicker';
 import {Screen} from '../components/Screen';
 import {SectionHeader} from '../components/SectionHeader';
@@ -85,18 +86,20 @@ export function CalculatorScreen() {
     <>
       <Screen>
         <SectionHeader title="EMI calculator" caption="Model the full cost of a reducing-balance loan." />
-        <Controller control={control} name="principal" render={({field}) => (
-          <FormField label="Loan amount" prefix="₹" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(formatCurrencyInput(value))} error={errors.principal?.message} />
-        )} />
-        <Controller control={control} name="interestRate" render={({field}) => (
-          <FormField label="Annual interest rate" suffix="%" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.interestRate?.message} />
-        )} />
-        <Controller control={control} name="tenureUnit" render={({field}) => (
-          <SegmentedControl value={field.value} onChange={field.onChange} options={[{label: 'Years', value: 'years'}, {label: 'Months', value: 'months'}]} />
-        )} />
-        <Controller control={control} name="tenure" render={({field}) => (
-          <FormField label="Tenure" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.tenure?.message} />
-        )} />
+        <FormGrid>
+          <Controller control={control} name="principal" render={({field}) => (
+            <FormField label="Loan amount" hint="Example: ₹25,00,000" prefix="₹" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(formatCurrencyInput(value))} error={errors.principal?.message} />
+          )} />
+          <Controller control={control} name="interestRate" render={({field}) => (
+            <FormField label="Annual interest rate" hint="Example: 8.5% per year" suffix="%" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.interestRate?.message} />
+          )} />
+          <Controller control={control} name="tenureUnit" render={({field}) => (
+            <SegmentedControl value={field.value} onChange={field.onChange} options={[{label: 'Years', value: 'years'}, {label: 'Months', value: 'months'}]} />
+          )} />
+          <Controller control={control} name="tenure" render={({field}) => (
+            <FormField label="Tenure" hint="Example: 20 years or 240 months" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.tenure?.message} />
+          )} />
+        </FormGrid>
         <AppButton title="Calculate EMI" onPress={handleSubmit(calculate)} icon={<Calculator color={colors.white} size={19} />} />
         {result ? (
           <View style={styles.result}>
@@ -158,11 +161,11 @@ function SaveLoanSheet({visible, result, onClose}: {visible: boolean; result: Ca
               <AppButton title="Close" variant="ghost" onPress={onClose} style={styles.closeButton} />
             </View>
             <Controller control={control} name="name" render={({field}) => (
-              <FormField autoFocus label="Loan name" placeholder="e.g. SBI Home Loan" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.name?.message} />
+              <FormField autoFocus label="Loan name" hint="Example: SBI Home Loan" placeholder="SBI Home Loan" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.name?.message} />
             )} />
             <Controller control={control} name="type" render={({field}) => <LoanTypePicker value={field.value} onChange={field.onChange} />} />
             <Controller control={control} name="startDate" render={({field}) => (
-              <FormField label="Start date" placeholder="YYYY-MM-DD" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.startDate?.message} />
+              <FormField label="Start date" hint="Example: 2026-08-17" placeholder="YYYY-MM-DD" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.startDate?.message} />
             )} />
             <AppButton title="Save to my loans" onPress={handleSubmit(save)} />
           </ScrollView>

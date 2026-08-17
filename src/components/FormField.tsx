@@ -1,5 +1,6 @@
-import React from 'react';
-import {StyleSheet, Text, TextInput, View, type TextInputProps} from 'react-native';
+import React, {useState} from 'react';
+import {Pressable, StyleSheet, Text, TextInput, View, type TextInputProps} from 'react-native';
+import {Info} from 'lucide-react-native';
 import {useAppTheme} from '../context/ThemeContext';
 
 interface FormFieldProps extends TextInputProps {
@@ -7,6 +8,7 @@ interface FormFieldProps extends TextInputProps {
   error?: string;
   prefix?: string;
   suffix?: string;
+  hint?: string;
 }
 
 export function FormField({
@@ -14,14 +16,34 @@ export function FormField({
   error,
   prefix,
   suffix,
+  hint,
   style,
   ...props
 }: FormFieldProps) {
   const {colors} = useAppTheme();
+  const [showHint, setShowHint] = useState(false);
 
   return (
     <View style={styles.wrapper}>
-      <Text style={[styles.label, {color: colors.textMuted}]}>{label}</Text>
+      <View style={styles.labelRow}>
+        <Text style={[styles.label, {color: colors.textMuted}]}>{label}</Text>
+        {hint ? (
+          <Pressable
+            accessibilityLabel={`More information about ${label}`}
+            accessibilityRole="button"
+            accessibilityState={{expanded: showHint}}
+            hitSlop={8}
+            onPress={() => setShowHint(current => !current)}
+            style={({pressed}) => [styles.infoButton, pressed && styles.pressed]}>
+            <Info color={showHint ? colors.primary : colors.textMuted} size={15} />
+          </Pressable>
+        ) : null}
+      </View>
+      {hint && showHint ? (
+        <View style={[styles.tooltip, {backgroundColor: colors.primarySoft}]}>
+          <Text style={[styles.tooltipText, {color: colors.text}]}>{hint}</Text>
+        </View>
+      ) : null}
       <View
         style={[
           styles.inputShell,
@@ -43,7 +65,12 @@ export function FormField({
 
 const styles = StyleSheet.create({
   wrapper: {gap: 7},
+  labelRow: {flexDirection: 'row', alignItems: 'center', gap: 5},
   label: {fontSize: 13, fontWeight: '600', letterSpacing: 0},
+  infoButton: {width: 24, height: 24, alignItems: 'center', justifyContent: 'center'},
+  pressed: {opacity: 0.55},
+  tooltip: {alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7},
+  tooltipText: {fontSize: 11, lineHeight: 15, letterSpacing: 0},
   inputShell: {
     minHeight: 52,
     borderWidth: 1,
@@ -56,4 +83,3 @@ const styles = StyleSheet.create({
   affix: {fontSize: 15, fontWeight: '600', marginHorizontal: 3, letterSpacing: 0},
   error: {fontSize: 12, letterSpacing: 0},
 });
-

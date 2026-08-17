@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {FlatList, StyleSheet, Text, View} from 'react-native';
+import {FlatList, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
 import {Plus, WalletCards} from 'lucide-react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -19,7 +19,10 @@ function ItemSeparator() {
 
 export function HomeScreen({navigation}: Props) {
   const {colors} = useAppTheme();
+  const {width} = useWindowDimensions();
   const {loans, canAddLoan} = useLoans();
+  const columnCount = width >= 700 ? 2 : 1;
+  const horizontalPadding = width >= 768 ? 32 : width >= 430 ? 20 : 16;
   const totals = useMemo(
     () => ({
       principal: loans.reduce((sum, loan) => sum + loan.principal, 0),
@@ -34,10 +37,17 @@ export function HomeScreen({navigation}: Props) {
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.safe, {backgroundColor: colors.background}]}>
       <FlatList
+        key={`loan-grid-${columnCount}`}
         data={loans}
+        numColumns={columnCount}
+        columnWrapperStyle={columnCount > 1 ? styles.columns : undefined}
         keyExtractor={loan => loan.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.list, loans.length === 0 && styles.emptyList]}
+        contentContainerStyle={[
+          styles.list,
+          {paddingHorizontal: horizontalPadding},
+          loans.length === 0 && styles.emptyList,
+        ]}
         ItemSeparatorComponent={ItemSeparator}
         ListHeaderComponent={
           <View style={styles.headerContent}>
@@ -82,7 +92,9 @@ export function HomeScreen({navigation}: Props) {
           </View>
         }
         renderItem={({item}) => (
-          <LoanCard loan={item} onPress={() => navigation.navigate('LoanDetail', {loanId: item.id})} />
+          <View style={styles.loanItem}>
+            <LoanCard loan={item} onPress={() => navigation.navigate('LoanDetail', {loanId: item.id})} />
+          </View>
         )}
       />
     </SafeAreaView>
@@ -91,8 +103,10 @@ export function HomeScreen({navigation}: Props) {
 
 const styles = StyleSheet.create({
   safe: {flex: 1},
-  list: {padding: 16, paddingBottom: 32},
+  list: {paddingVertical: 16, paddingBottom: 32},
   emptyList: {flexGrow: 1},
+  columns: {gap: 12},
+  loanItem: {flex: 1, minWidth: 0},
   separator: {height: 12},
   headerContent: {gap: 20, marginBottom: 16},
   titleRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},

@@ -1,11 +1,28 @@
 import React, {useState} from 'react';
-import {StatusBar} from 'react-native';
+import {StatusBar, Text, TextInput} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {LoanProvider} from './src/context/LoanContext';
 import {ThemeProvider, useAppTheme} from './src/context/ThemeContext';
 import {AppNavigator} from './src/navigation/AppNavigator';
 import {OnboardingScreen} from './src/screens/OnboardingScreen';
 import {preferenceRepository} from './src/services/storage';
+
+type NativeTextComponent = {
+  defaultProps?: {style?: unknown};
+};
+
+const interStyle = {fontFamily: 'Inter'};
+const NativeText = Text as unknown as NativeTextComponent;
+const NativeTextInput = TextInput as unknown as NativeTextComponent;
+
+NativeText.defaultProps = {
+  ...NativeText.defaultProps,
+  style: [interStyle, NativeText.defaultProps?.style],
+};
+NativeTextInput.defaultProps = {
+  ...NativeTextInput.defaultProps,
+  style: [interStyle, NativeTextInput.defaultProps?.style],
+};
 
 function AppContent() {
   const {isDark} = useAppTheme();
