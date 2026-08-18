@@ -39,3 +39,4 @@ npm test
 - `src/config.ts`: central Pro state, feature flags, and optional loan-limit policy
 
 `appConfig.loanLimit` is `null`, so saved loans are currently unbounded. Set a number later to enforce a cap through the existing repository-facing policy without changing the screens.
+# newtesting
