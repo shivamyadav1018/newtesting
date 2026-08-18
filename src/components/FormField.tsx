@@ -2,6 +2,18 @@ import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View, type TextInputProps} from 'react-native';
 import {Info} from 'lucide-react-native';
 import {useAppTheme} from '../context/ThemeContext';
+import {RangeSlider} from './RangeSlider';
+
+interface SliderConfig {
+  value: number;
+  minimumValue: number;
+  maximumValue: number;
+  step: number;
+  minimumLabel: string;
+  maximumLabel: string;
+  valueLabel?: string;
+  onValueChange: (value: number) => void;
+}
 
 interface FormFieldProps extends TextInputProps {
   label: string;
@@ -9,6 +21,7 @@ interface FormFieldProps extends TextInputProps {
   prefix?: string;
   suffix?: string;
   hint?: string;
+  slider?: SliderConfig;
 }
 
 export function FormField({
@@ -17,6 +30,7 @@ export function FormField({
   prefix,
   suffix,
   hint,
+  slider,
   style,
   ...props
 }: FormFieldProps) {
@@ -40,7 +54,10 @@ export function FormField({
         ) : null}
       </View>
       {hint && showHint ? (
-        <View style={[styles.tooltip, {backgroundColor: colors.primarySoft}]}>
+        <View
+          accessibilityLiveRegion="polite"
+          style={[styles.tooltip, {backgroundColor: colors.primarySoft}]}>
+          <Text style={[styles.tooltipTitle, {color: colors.primary}]}>Why this matters</Text>
           <Text style={[styles.tooltipText, {color: colors.text}]}>{hint}</Text>
         </View>
       ) : null}
@@ -59,6 +76,19 @@ export function FormField({
         {suffix ? <Text style={[styles.affix, {color: colors.textMuted}]}>{suffix}</Text> : null}
       </View>
       {error ? <Text style={[styles.error, {color: colors.danger}]}>{error}</Text> : null}
+      {slider ? (
+        <RangeSlider
+          accessibilityLabel={`${label} slider`}
+          value={slider.value}
+          minimumValue={slider.minimumValue}
+          maximumValue={slider.maximumValue}
+          step={slider.step}
+          minimumLabel={slider.minimumLabel}
+          maximumLabel={slider.maximumLabel}
+          valueLabel={slider.valueLabel}
+          onValueChange={slider.onValueChange}
+        />
+      ) : null}
     </View>
   );
 }
@@ -69,8 +99,9 @@ const styles = StyleSheet.create({
   label: {fontSize: 13, fontWeight: '600', letterSpacing: 0},
   infoButton: {width: 24, height: 24, alignItems: 'center', justifyContent: 'center'},
   pressed: {opacity: 0.55},
-  tooltip: {alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7},
-  tooltipText: {fontSize: 11, lineHeight: 15, letterSpacing: 0},
+  tooltip: {alignSelf: 'stretch', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, gap: 3},
+  tooltipTitle: {fontSize: 11, fontWeight: '800', letterSpacing: 0},
+  tooltipText: {fontSize: 12, lineHeight: 17, letterSpacing: 0},
   inputShell: {
     minHeight: 52,
     borderWidth: 1,
