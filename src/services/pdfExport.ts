@@ -1,6 +1,442 @@
-import type {Loan} from '../types/loan';
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+} from 'pdf-lib';
+import Share from 'react-native-share';
+import type { Loan } from '../types/loan';
+import { LOAN_TYPE_LABELS } from '../types/loan';
+import {
+  calculateLoanMetrics,
+  generateAmortizationSchedule,
+} from '../utils/loanCalculations';
 
-export async function exportLoanSummary(_loan: Loan): Promise<void> {
-  throw new Error('PDF export is not included in the MVP build.');
+const PAGE_WIDTH = 595.28;
+const PAGE_HEIGHT = 841.89;
+const PAGE_MARGIN = 42;
+const GREEN = rgb(0.086, 0.529, 0.396);
+const DARK = rgb(0.075, 0.125, 0.11);
+const MUTED = rgb(0.39, 0.44, 0.42);
+const BORDER = rgb(0.86, 0.89, 0.88);
+const SOFT = rgb(0.95, 0.97, 0.96);
+
+export async function buildLoanSummaryPdf(loan: Loan): Promise<string> {
+  const document = await PDFDocument.create();
+  const regular = await document.embedFont(StandardFonts.Helvetica);
+  const bold = await document.embedFont(StandardFonts.HelveticaBold);
+  const metrics = calculateLoanMetrics(
+    loan.principal,
+    loan.interestRate,
+    loan.tenureMonths,
+  );
+  const schedule = generateAmortizationSchedule(
+    loan.principal,
+    loan.interestRate,
+    loan.tenureMonths,
+  );
+
+  document.setTitle(`${loan.name} loan summary`);
+  document.setAuthor('EMI Planner');
+  document.setSubject('Loan summary and amortization schedule');
+  document.setCreationDate(new Date());
+
+  let page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  drawBrandHeader(page, regular, bold);
+  let y = 742;
+
+  page.drawText(
+    fitText(toPdfText(loan.name), bold, 24, PAGE_WIDTH - PAGE_MARGIN * 2),
+    {
+      x: PAGE_MARGIN,
+      y,
+      size: 24,
+      font: bold,
+      color: DARK,
+    },
+  );
+  y -= 24;
+  page.drawText(
+    `${LOAN_TYPE_LABELS[loan.type]} loan | Started ${formatDate(
+      loan.startDate,
+    )}`,
+    {
+      x: PAGE_MARGIN,
+      y,
+      size: 10,
+      font: regular,
+      color: MUTED,
+    },
+  );
+
+  y -= 44;
+  drawHighlight(
+    page,
+    regular,
+    bold,
+    'MONTHLY EMI',
+    formatPdfMoney(metrics.emi),
+    PAGE_MARGIN,
+    y,
+    154,
+  );
+  drawHighlight(
+    page,
+    regular,
+    bold,
+    'TOTAL INTEREST',
+    formatPdfMoney(metrics.totalInterest),
+    PAGE_MARGIN + 166,
+    y,
+    154,
+  );
+  drawHighlight(
+    page,
+    regular,
+    bold,
+    'TOTAL PAYMENT',
+    formatPdfMoney(metrics.totalPayment),
+    PAGE_MARGIN + 332,
+    y,
+    179,
+  );
+
+  y -= 92;
+  page.drawText('Loan terms', {
+    x: PAGE_MARGIN,
+    y,
+    size: 15,
+    font: bold,
+    color: DARK,
+  });
+  y -= 28;
+  drawTerm(
+    page,
+    regular,
+    bold,
+    'Principal',
+    formatPdfMoney(loan.principal),
+    PAGE_MARGIN,
+    y,
+  );
+  drawTerm(
+    page,
+    regular,
+    bold,
+    'Interest rate',
+    `${loan.interestRate}% p.a.`,
+    PAGE_MARGIN + 176,
+    y,
+  );
+  drawTerm(
+    page,
+    regular,
+    bold,
+    'Original tenure',
+    `${loan.tenureMonths} months`,
+    PAGE_MARGIN + 352,
+    y,
+  );
+
+  y -= 64;
+  page.drawText('Amortization schedule', {
+    x: PAGE_MARGIN,
+    y,
+    size: 15,
+    font: bold,
+    color: DARK,
+  });
+  page.drawText(`${schedule.length} monthly payments`, {
+    x: PAGE_WIDTH - PAGE_MARGIN - 110,
+    y: y + 2,
+    size: 9,
+    font: regular,
+    color: MUTED,
+  });
+  y -= 25;
+
+  const columns = [
+    { label: 'Month', x: PAGE_MARGIN, width: 45, align: 'left' as const },
+    {
+      label: 'Payment',
+      x: PAGE_MARGIN + 60,
+      width: 90,
+      align: 'right' as const,
+    },
+    {
+      label: 'Principal',
+      x: PAGE_MARGIN + 165,
+      width: 90,
+      align: 'right' as const,
+    },
+    {
+      label: 'Interest',
+      x: PAGE_MARGIN + 270,
+      width: 90,
+      align: 'right' as const,
+    },
+    {
+      label: 'Balance',
+      x: PAGE_MARGIN + 375,
+      width: 94,
+      align: 'right' as const,
+    },
+  ];
+  y = drawTableHeader(page, bold, columns, y);
+
+  schedule.forEach(entry => {
+    if (y < 62) {
+      page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      drawBrandHeader(page, regular, bold);
+      page.drawText(
+        `${fitText(toPdfText(loan.name), bold, 13, 330)} - amortization`,
+        {
+          x: PAGE_MARGIN,
+          y: 750,
+          size: 13,
+          font: bold,
+          color: DARK,
+        },
+      );
+      y = drawTableHeader(page, bold, columns, 724);
+    }
+
+    const values = [
+      String(entry.month),
+      formatPdfMoney(entry.emi, false),
+      formatPdfMoney(entry.principalComponent, false),
+      formatPdfMoney(entry.interestComponent, false),
+      formatPdfMoney(entry.remainingBalance, false),
+    ];
+    columns.forEach((column, index) => {
+      drawCell(
+        page,
+        regular,
+        values[index],
+        column.x,
+        y,
+        column.width,
+        column.align,
+      );
+    });
+    page.drawLine({
+      start: { x: PAGE_MARGIN, y: y - 6 },
+      end: { x: PAGE_WIDTH - PAGE_MARGIN, y: y - 6 },
+      thickness: 0.5,
+      color: BORDER,
+    });
+    y -= 19;
+  });
+
+  const pages = document.getPages();
+  pages.forEach((pdfPage, index) => {
+    pdfPage.drawText(
+      `Generated by EMI Planner | ${new Date().toLocaleDateString('en-IN')}`,
+      {
+        x: PAGE_MARGIN,
+        y: 25,
+        size: 8,
+        font: regular,
+        color: MUTED,
+      },
+    );
+    const pageNumber = `Page ${index + 1} of ${pages.length}`;
+    pdfPage.drawText(pageNumber, {
+      x: PAGE_WIDTH - PAGE_MARGIN - regular.widthOfTextAtSize(pageNumber, 8),
+      y: 25,
+      size: 8,
+      font: regular,
+      color: MUTED,
+    });
+  });
+
+  return document.saveAsBase64();
 }
 
+export async function exportLoanSummary(loan: Loan): Promise<void> {
+  const base64 = await buildLoanSummaryPdf(loan);
+  const filename = `${slugify(loan.name) || 'loan'}-summary`;
+  await Share.open({
+    title: `${loan.name} loan summary`,
+    subject: `${loan.name} loan summary`,
+    url: `data:application/pdf;base64,${base64}`,
+    type: 'application/pdf',
+    filename,
+    failOnCancel: false,
+    useInternalStorage: true,
+  });
+}
+
+function drawBrandHeader(page: PDFPage, regular: PDFFont, bold: PDFFont) {
+  page.drawRectangle({
+    x: 0,
+    y: PAGE_HEIGHT - 58,
+    width: PAGE_WIDTH,
+    height: 58,
+    color: GREEN,
+  });
+  page.drawText('EMI PLANNER', {
+    x: PAGE_MARGIN,
+    y: PAGE_HEIGHT - 37,
+    size: 14,
+    font: bold,
+    color: rgb(1, 1, 1),
+  });
+  page.drawText('Loan summary', {
+    x: PAGE_WIDTH - PAGE_MARGIN - regular.widthOfTextAtSize('Loan summary', 10),
+    y: PAGE_HEIGHT - 35,
+    size: 10,
+    font: regular,
+    color: rgb(1, 1, 1),
+  });
+}
+
+function drawHighlight(
+  page: PDFPage,
+  _regular: PDFFont,
+  bold: PDFFont,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+) {
+  page.drawRectangle({
+    x,
+    y: y - 42,
+    width,
+    height: 68,
+    color: SOFT,
+    borderColor: BORDER,
+    borderWidth: 0.7,
+  });
+  page.drawText(label, {
+    x: x + 12,
+    y: y + 8,
+    size: 8,
+    font: bold,
+    color: MUTED,
+  });
+  page.drawText(fitText(value, bold, 13, width - 24), {
+    x: x + 12,
+    y: y - 17,
+    size: 13,
+    font: bold,
+    color: DARK,
+  });
+}
+
+function drawTerm(
+  page: PDFPage,
+  regular: PDFFont,
+  bold: PDFFont,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+) {
+  page.drawText(label, { x, y, size: 8, font: regular, color: MUTED });
+  page.drawText(value, { x, y: y - 19, size: 11, font: bold, color: DARK });
+}
+
+function drawTableHeader(
+  page: PDFPage,
+  bold: PDFFont,
+  columns: Array<{
+    label: string;
+    x: number;
+    width: number;
+    align: 'left' | 'right';
+  }>,
+  y: number,
+): number {
+  page.drawRectangle({
+    x: PAGE_MARGIN,
+    y: y - 11,
+    width: PAGE_WIDTH - PAGE_MARGIN * 2,
+    height: 24,
+    color: SOFT,
+  });
+  columns.forEach(column =>
+    drawCell(
+      page,
+      bold,
+      column.label,
+      column.x,
+      y - 3,
+      column.width,
+      column.align,
+      8,
+    ),
+  );
+  return y - 29;
+}
+
+function drawCell(
+  page: PDFPage,
+  font: PDFFont,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+  align: 'left' | 'right',
+  size = 8.5,
+) {
+  const text = fitText(value, font, size, width);
+  const textX =
+    align === 'right' ? x + width - font.widthOfTextAtSize(text, size) : x;
+  page.drawText(text, { x: textX, y, size, font, color: DARK });
+}
+
+function fitText(
+  value: string,
+  font: PDFFont,
+  size: number,
+  maxWidth: number,
+): string {
+  if (font.widthOfTextAtSize(value, size) <= maxWidth) return value;
+  let shortened = value;
+  while (
+    shortened.length &&
+    font.widthOfTextAtSize(`${shortened}...`, size) > maxWidth
+  ) {
+    shortened = shortened.slice(0, -1);
+  }
+  return `${shortened}...`;
+}
+
+function formatPdfMoney(value: number, includeCurrency = true): string {
+  const amount = Math.round(Number.isFinite(value) ? value : 0).toLocaleString(
+    'en-IN',
+  );
+  return includeCurrency ? `INR ${amount}` : amount;
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? toPdfText(value)
+    : date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+}
+
+function toPdfText(value: string): string {
+  return (
+    value
+      .normalize('NFKD')
+      .replace(/[^\x20-\x7E]/g, '')
+      .trim() || 'Loan'
+  );
+}
+
+function slugify(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase();
+}

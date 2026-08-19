@@ -1,10 +1,11 @@
-import type {NavigatorScreenParams} from '@react-navigation/native';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type HomeStackParamList = {
   LoanList: undefined;
-  LoanDetail: {loanId: string};
-  Amortization: {loanId: string};
-  LoanForm: {loanId?: string} | undefined;
+  LoanDetail: { loanId: string };
+  Amortization: { loanId: string };
+  Prepayment: { loanId: string };
+  LoanForm: { loanId?: string } | undefined;
 };
 
 export type TabParamList = {
@@ -13,4 +14,3 @@ export type TabParamList = {
   Compare: undefined;
   Settings: undefined;
 };
-
