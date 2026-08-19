@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {StatusBar, Text, TextInput} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {LoanProvider} from './src/context/LoanContext';
@@ -6,6 +6,7 @@ import {ThemeProvider, useAppTheme} from './src/context/ThemeContext';
 import {AppNavigator} from './src/navigation/AppNavigator';
 import {OnboardingScreen} from './src/screens/OnboardingScreen';
 import {preferenceRepository} from './src/services/storage';
+import {initializeAdMob} from './src/services/adMob';
 
 type NativeTextComponent = {
   defaultProps?: {style?: unknown};
@@ -42,16 +43,16 @@ function AppContent() {
   return (
     <>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      {launchState.onboardingComplete ? (
-        <AppNavigator initialTab={launchState.initialTab} />
-      ) : (
-        <OnboardingScreen onComplete={completeOnboarding} />
-      )}
+      {launchState.onboardingComplete ? <AppNavigator initialTab={launchState.initialTab} /> : <OnboardingScreen onComplete={completeOnboarding} />}
     </>
   );
 }
 
 export default function App() {
+  useEffect(() => {
+    initializeAdMob();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

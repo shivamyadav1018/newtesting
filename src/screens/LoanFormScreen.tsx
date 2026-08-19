@@ -15,6 +15,7 @@ import {useLoans} from '../context/LoanContext';
 import type {HomeStackParamList} from '../navigation/types';
 import type {LoanType} from '../types/loan';
 import {formatCurrencyInput, parseCurrencyInput} from '../utils/currency';
+import {showInterstitialAd} from '../services/adMob';
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter a loan name'),
@@ -50,8 +51,7 @@ export function LoanFormScreen({navigation, route}: Props) {
   });
 
   const onSubmit = (values: FormValues) => {
-    const tenureMonths =
-      values.tenureUnit === 'years' ? Math.round(Number(values.tenure) * 12) : Math.round(Number(values.tenure));
+    const tenureMonths = values.tenureUnit === 'years' ? Math.round(Number(values.tenure) * 12) : Math.round(Number(values.tenure));
     const input = {
       name: values.name.trim(),
       type: values.type as LoanType,
@@ -67,6 +67,7 @@ export function LoanFormScreen({navigation, route}: Props) {
       } else {
         addLoan(input);
       }
+      showInterstitialAd();
       navigation.goBack();
     } catch (error) {
       Alert.alert('Could not save loan', error instanceof Error ? error.message : 'Please try again.');
@@ -76,28 +77,27 @@ export function LoanFormScreen({navigation, route}: Props) {
   return (
     <Screen>
       <SectionHeader title={loan ? 'Edit loan' : 'Add a loan'} caption="Use the terms from your lender's latest statement." />
-      <Controller control={control} name="type" render={({field}) => (
-        <LoanTypePicker value={field.value} onChange={field.onChange} />
-      )} />
+      <Controller control={control} name="type" render={({field}) => <LoanTypePicker value={field.value} onChange={field.onChange} />} />
       <FormGrid>
-        <Controller control={control} name="name" render={({field}) => (
-          <FormField label="Loan name" hint="Example: HDFC Home Loan" placeholder="HDFC Home Loan" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.name?.message} />
-        )} />
-        <Controller control={control} name="principal" render={({field}) => (
-          <FormField label="Loan amount" hint="Example: ₹25,00,000" prefix="₹" placeholder="25,00,000" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(formatCurrencyInput(value))} error={errors.principal?.message} />
-        )} />
-        <Controller control={control} name="interestRate" render={({field}) => (
-          <FormField label="Annual interest rate" hint="Example: 8.5% per year" suffix="%" placeholder="8.5" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.interestRate?.message} />
-        )} />
-        <Controller control={control} name="tenureUnit" render={({field}) => (
-          <SegmentedControl value={field.value} onChange={field.onChange} options={[{label: 'Years', value: 'years'}, {label: 'Months', value: 'months'}]} />
-        )} />
-        <Controller control={control} name="tenure" render={({field}) => (
-          <FormField label="Tenure" hint="Example: 20 years or 240 months" placeholder="240" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.tenure?.message} />
-        )} />
-        <Controller control={control} name="startDate" render={({field}) => (
-          <FormField label="Start date" hint="Example: 2026-08-17" placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.startDate?.message} />
-        )} />
+        <Controller control={control} name="name" render={({field}) => <FormField label="Loan name" hint="Example: HDFC Home Loan" placeholder="HDFC Home Loan" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.name?.message} />} />
+        <Controller control={control} name="principal" render={({field}) => <FormField label="Loan amount" hint="Example: ₹25,00,000" prefix="₹" placeholder="25,00,000" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(formatCurrencyInput(value))} error={errors.principal?.message} />} />
+        <Controller control={control} name="interestRate" render={({field}) => <FormField label="Annual interest rate" hint="Example: 8.5% per year" suffix="%" placeholder="8.5" keyboardType="decimal-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.interestRate?.message} />} />
+        <Controller
+          control={control}
+          name="tenureUnit"
+          render={({field}) => (
+            <SegmentedControl
+              value={field.value}
+              onChange={field.onChange}
+              options={[
+                {label: 'Years', value: 'years'},
+                {label: 'Months', value: 'months'},
+              ]}
+            />
+          )}
+        />
+        <Controller control={control} name="tenure" render={({field}) => <FormField label="Tenure" hint="Example: 20 years or 240 months" placeholder="240" keyboardType="number-pad" value={field.value} onBlur={field.onBlur} onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))} error={errors.tenure?.message} />} />
+        <Controller control={control} name="startDate" render={({field}) => <FormField label="Start date" hint="Example: 2026-08-17" placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.startDate?.message} />} />
       </FormGrid>
       <AppButton title={loan ? 'Save changes' : 'Save loan'} onPress={handleSubmit(onSubmit)} loading={isSubmitting} style={styles.submit} />
     </Screen>

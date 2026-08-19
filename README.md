@@ -39,4 +39,13 @@ npm test
 - `src/config.ts`: central Pro state, feature flags, and optional loan-limit policy
 
 `appConfig.loanLimit` is `null`, so saved loans are currently unbounded. Set a number later to enforce a cap through the existing repository-facing policy without changing the screens.
-# newtesting
+
+## AdMob configuration
+
+Development builds automatically use Google's test interstitial ID. Before a release:
+
+1. Replace the Android and iOS demo **app IDs** in `app.json` with the app IDs from your AdMob account.
+2. Set the Android and iOS production interstitial **ad-unit IDs** in `productionAdMobInterstitialIds` in `src/config.ts`.
+3. Reinstall iOS pods and rebuild the native app.
+
+If a production ad-unit ID is missing, release builds skip the ad and keep every calculation/save action working. Interstitials are requested after successful calculate, save-loan, and add-comparison submissions.

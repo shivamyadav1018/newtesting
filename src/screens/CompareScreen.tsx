@@ -16,6 +16,7 @@ import {useAppTheme} from '../context/ThemeContext';
 import type {ComparisonOffer} from '../types/loan';
 import {formatCurrencyInput, formatCompactINR, parseCurrencyInput} from '../utils/currency';
 import {calculateLoanMetrics} from '../utils/loanCalculations';
+import {showInterstitialAd} from '../services/adMob';
 
 const offerSchema = z
   .object({
@@ -28,7 +29,11 @@ const offerSchema = z
   .superRefine((values, context) => {
     const months = values.tenureUnit === 'years' ? Number(values.tenure) * 12 : Number(values.tenure);
     if (months > 600) {
-      context.addIssue({code: 'custom', path: ['tenure'], message: 'Tenure cannot exceed 50 years'});
+      context.addIssue({
+        code: 'custom',
+        path: ['tenure'],
+        message: 'Tenure cannot exceed 50 years',
+      });
     }
   });
 
@@ -67,25 +72,19 @@ export function CompareScreen() {
   const axisLabelStyle = {color: colors.textMuted, ...styles.axisLabel};
 
   const toggleLoan = (id: string) => {
-    setSelectedIds(current =>
-      current.includes(id)
-        ? current.filter(item => item !== id)
-        : current.length < 3
-          ? [...current, id]
-          : current,
-    );
+    setSelectedIds(current => (current.includes(id) ? current.filter(item => item !== id) : current.length < 3 ? [...current, id] : current));
   };
 
   return (
     <Screen>
-      <SectionHeader
-        title="Choose the loan that fits you"
-        caption="Compare 2 or 3 offers. We’ll separate monthly affordability from long-term cost so you can see the trade-off."
-      />
+      <SectionHeader title="Choose the loan that fits you" caption="Compare 2 or 3 offers. We’ll separate monthly affordability from long-term cost so you can see the trade-off." />
       <SegmentedControl
         value={mode}
         onChange={setMode}
-        options={[{label: 'Choose saved loans', value: 'saved'}, {label: 'Enter new offers', value: 'manual'}]}
+        options={[
+          {label: 'Choose saved loans', value: 'saved'},
+          {label: 'Enter new offers', value: 'manual'},
+        ]}
       />
       {mode === 'saved' ? (
         <View style={styles.selector}>
@@ -105,21 +104,16 @@ export function CompareScreen() {
                 borderColor: selected ? colors.primary : colors.border,
               };
               return (
-                <Pressable
-                  key={loan.id}
-                  disabled={disabled}
-                  onPress={() => toggleLoan(loan.id)}
-                  style={[
-                    styles.loanOption,
-                    optionStateStyle,
-                  ]}>
+                <Pressable key={loan.id} disabled={disabled} onPress={() => toggleLoan(loan.id)} style={[styles.loanOption, optionStateStyle]}>
                   <View style={styles.loanCopy}>
-                    <Text numberOfLines={1} style={[styles.loanName, {color: colors.text}]}>{loan.name}</Text>
-                    <Text style={[styles.loanTerms, {color: colors.textMuted}]}>{formatCompactINR(loan.principal)} · {loan.interestRate}% yearly · {formatTenure(loan.tenureMonths)}</Text>
+                    <Text numberOfLines={1} style={[styles.loanName, {color: colors.text}]}>
+                      {loan.name}
+                    </Text>
+                    <Text style={[styles.loanTerms, {color: colors.textMuted}]}>
+                      {formatCompactINR(loan.principal)} · {loan.interestRate}% yearly · {formatTenure(loan.tenureMonths)}
+                    </Text>
                   </View>
-                  <View style={[styles.check, checkStateStyle]}>
-                    {selected ? <Check color={colors.white} size={15} strokeWidth={3} /> : null}
-                  </View>
+                  <View style={[styles.check, checkStateStyle]}>{selected ? <Check color={colors.white} size={15} strokeWidth={3} /> : null}</View>
                 </Pressable>
               );
             })
@@ -128,38 +122,15 @@ export function CompareScreen() {
       ) : (
         <ManualOffers offers={manualOffers} setOffers={setManualOffers} />
       )}
-      <Text style={[styles.selectionHint, {color: offers.length >= 2 ? colors.primary : colors.textMuted}]}>
-        {offers.length < 2
-          ? `${offers.length} of 3 added · add ${2 - offers.length} more to compare`
-          : `${offers.length} of 3 added · comparison ready`}
-      </Text>
+      <Text style={[styles.selectionHint, {color: offers.length >= 2 ? colors.primary : colors.textMuted}]}>{offers.length < 2 ? `${offers.length} of 3 added · add ${2 - offers.length} more to compare` : `${offers.length} of 3 added · comparison ready`}</Text>
       {offers.length >= 2 ? (
         <>
-          <SectionHeader
-            title="Your best options"
-            caption="Start with the recommendation, then check whether the monthly payment works for your budget."
-          />
+          <SectionHeader title="Your best options" caption="Start with the recommendation, then check whether the monthly payment works for your budget." />
           <ComparisonTable offers={offers} />
           <View style={[styles.chart, {backgroundColor: colors.surface, borderColor: colors.border}]}>
             <Text style={[styles.chartTitle, {color: colors.text}]}>Interest cost over the full loan</Text>
-            <Text style={[styles.chartCaption, {color: colors.textMuted}]}>
-              {samePrincipal
-                ? 'A shorter bar means less money paid to the lender as interest.'
-                : 'Compare these bars only after making the amount borrowed the same.'}
-            </Text>
-            <BarChart
-              data={barData}
-              width={Math.max(240, width - 84)}
-              height={190}
-              barWidth={Math.min(52, (width - 130) / offers.length)}
-              spacing={22}
-              hideYAxisText
-              yAxisColor={colors.chartGrid}
-              xAxisColor={colors.chartGrid}
-              rulesColor={colors.chartGrid}
-              noOfSections={4}
-              xAxisLabelTextStyle={axisLabelStyle}
-            />
+            <Text style={[styles.chartCaption, {color: colors.textMuted}]}>{samePrincipal ? 'A shorter bar means less money paid to the lender as interest.' : 'Compare these bars only after making the amount borrowed the same.'}</Text>
+            <BarChart data={barData} width={Math.max(240, width - 84)} height={190} barWidth={Math.min(52, (width - 130) / offers.length)} spacing={22} hideYAxisText yAxisColor={colors.chartGrid} xAxisColor={colors.chartGrid} rulesColor={colors.chartGrid} noOfSections={4} xAxisLabelTextStyle={axisLabelStyle} />
           </View>
         </>
       ) : null}
@@ -169,9 +140,20 @@ export function CompareScreen() {
 
 function ManualOffers({offers, setOffers}: {offers: ComparisonOffer[]; setOffers: React.Dispatch<React.SetStateAction<ComparisonOffer[]>>}) {
   const {colors} = useAppTheme();
-  const {control, handleSubmit, reset, formState: {errors}} = useForm<OfferValues>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: {errors},
+  } = useForm<OfferValues>({
     resolver: zodResolver(offerSchema),
-    defaultValues: {name: '', principal: '', interestRate: '', tenure: '', tenureUnit: 'years'},
+    defaultValues: {
+      name: '',
+      principal: '',
+      interestRate: '',
+      tenure: '',
+      tenureUnit: 'years',
+    },
   });
   const tenureUnit = useWatch({control, name: 'tenureUnit'});
   const addOffer = (values: OfferValues) => {
@@ -187,7 +169,14 @@ function ManualOffers({offers, setOffers}: {offers: ComparisonOffer[]; setOffers
         source: 'manual',
       },
     ]);
-    reset({name: '', principal: '', interestRate: '', tenure: '', tenureUnit: values.tenureUnit});
+    reset({
+      name: '',
+      principal: '',
+      interestRate: '',
+      tenure: '',
+      tenureUnit: values.tenureUnit,
+    });
+    showInterstitialAd();
   };
 
   return (
@@ -196,7 +185,9 @@ function ManualOffers({offers, setOffers}: {offers: ComparisonOffer[]; setOffers
         <View key={offer.id} style={[styles.savedOffer, {backgroundColor: colors.surface, borderColor: colors.border}]}>
           <View style={styles.loanCopy}>
             <Text style={[styles.loanName, {color: colors.text}]}>{offer.name}</Text>
-            <Text style={[styles.loanTerms, {color: colors.textMuted}]}>{formatCompactINR(offer.principal)} · {offer.interestRate}% yearly · {formatTenure(offer.tenureMonths)}</Text>
+            <Text style={[styles.loanTerms, {color: colors.textMuted}]}>
+              {formatCompactINR(offer.principal)} · {offer.interestRate}% yearly · {formatTenure(offer.tenureMonths)}
+            </Text>
           </View>
           <Pressable accessibilityLabel={`Remove ${offer.name}`} onPress={() => setOffers(current => current.filter(item => item.id !== offer.id))} style={styles.removeButton}>
             <Trash2 color={colors.danger} size={19} />
@@ -208,72 +199,97 @@ function ManualOffers({offers, setOffers}: {offers: ComparisonOffer[]; setOffers
           <Text style={[styles.formTitle, {color: colors.text}]}>Add offer {offers.length + 1}</Text>
           <Text style={[styles.formCaption, {color: colors.textMuted}]}>Use the same loan amount for every offer to get a fair comparison.</Text>
           <Controller control={control} name="name" render={({field}) => <FormField label="Offer name" hint="Use the lender or plan name so you can recognise this option in the results. The name does not affect the calculation." placeholder="Bank A" value={field.value} onBlur={field.onBlur} onChangeText={field.onChange} error={errors.name?.message} />} />
-          <Controller control={control} name="principal" render={({field}) => (
-            <FormField
-              label="Loan amount"
-              hint="The amount this lender will finance after your down payment. Keep it the same across offers for a fair comparison."
-              prefix="₹"
-              keyboardType="number-pad"
-              value={field.value}
-              onBlur={field.onBlur}
-              onChangeText={value => field.onChange(formatCurrencyInput(value))}
-              error={errors.principal?.message}
-              slider={{
-                value: parseCurrencyInput(field.value),
-                minimumValue: 1_000,
-                maximumValue: 50_000_000,
-                step: 50_000,
-                minimumLabel: '₹1K',
-                maximumLabel: '₹5 Cr',
-                valueLabel: `₹${field.value || '0'}`,
-                onValueChange: value => field.onChange(formatCurrencyInput(value)),
-              }}
-            />
-          )} />
-          <Controller control={control} name="interestRate" render={({field}) => (
-            <FormField
-              label="Annual interest rate"
-              hint="The lender’s yearly rate on the outstanding balance. A lower rate normally reduces both EMI and total interest."
-              suffix="%"
-              keyboardType="decimal-pad"
-              value={field.value}
-              onBlur={field.onBlur}
-              onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))}
-              error={errors.interestRate?.message}
-              slider={{
-                value: Number(field.value),
-                minimumValue: 0,
-                maximumValue: 50,
-                step: 0.1,
-                minimumLabel: '0%',
-                maximumLabel: '50%',
-                valueLabel: `${field.value || '0'}% per year`,
-                onValueChange: value => field.onChange(String(value)),
-              }}
-            />
-          )} />
-          <Controller control={control} name="tenureUnit" render={({field}) => <SegmentedControl value={field.value} onChange={field.onChange} options={[{label: 'Years', value: 'years'}, {label: 'Months', value: 'months'}]} />} />
-          <Controller control={control} name="tenure" render={({field}) => (
-            <FormField
-              label="Repayment tenure"
-              hint="A longer tenure can lower the EMI, but usually increases total interest. Compare both numbers before deciding."
-              keyboardType="number-pad"
-              value={field.value}
-              onBlur={field.onBlur}
-              onChangeText={value => field.onChange(value.replace(/[^0-9]/g, ''))}
-              error={errors.tenure?.message}
-              slider={{
-                value: Number(field.value),
-                minimumValue: 1,
-                maximumValue: tenureUnit === 'years' ? 50 : 600,
-                step: 1,
-                minimumLabel: tenureUnit === 'years' ? '1 year' : '1 month',
-                maximumLabel: tenureUnit === 'years' ? '50 years' : '600 months',
-                valueLabel: `${field.value || '0'} ${tenureUnit}`,
-                onValueChange: value => field.onChange(String(value)),
-              }}
-            />
-          )} />
+          <Controller
+            control={control}
+            name="principal"
+            render={({field}) => (
+              <FormField
+                label="Loan amount"
+                hint="The amount this lender will finance after your down payment. Keep it the same across offers for a fair comparison."
+                prefix="₹"
+                keyboardType="number-pad"
+                value={field.value}
+                onBlur={field.onBlur}
+                onChangeText={value => field.onChange(formatCurrencyInput(value))}
+                error={errors.principal?.message}
+                slider={{
+                  value: parseCurrencyInput(field.value),
+                  minimumValue: 1_000,
+                  maximumValue: 50_000_000,
+                  step: 50_000,
+                  minimumLabel: '₹1K',
+                  maximumLabel: '₹5 Cr',
+                  valueLabel: `₹${field.value || '0'}`,
+                  onValueChange: value => field.onChange(formatCurrencyInput(value)),
+                }}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="interestRate"
+            render={({field}) => (
+              <FormField
+                label="Annual interest rate"
+                hint="The lender’s yearly rate on the outstanding balance. A lower rate normally reduces both EMI and total interest."
+                suffix="%"
+                keyboardType="decimal-pad"
+                value={field.value}
+                onBlur={field.onBlur}
+                onChangeText={value => field.onChange(value.replace(/[^0-9.]/g, ''))}
+                error={errors.interestRate?.message}
+                slider={{
+                  value: Number(field.value),
+                  minimumValue: 0,
+                  maximumValue: 50,
+                  step: 0.1,
+                  minimumLabel: '0%',
+                  maximumLabel: '50%',
+                  valueLabel: `${field.value || '0'}% per year`,
+                  onValueChange: value => field.onChange(String(value)),
+                }}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="tenureUnit"
+            render={({field}) => (
+              <SegmentedControl
+                value={field.value}
+                onChange={field.onChange}
+                options={[
+                  {label: 'Years', value: 'years'},
+                  {label: 'Months', value: 'months'},
+                ]}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="tenure"
+            render={({field}) => (
+              <FormField
+                label="Repayment tenure"
+                hint="A longer tenure can lower the EMI, but usually increases total interest. Compare both numbers before deciding."
+                keyboardType="number-pad"
+                value={field.value}
+                onBlur={field.onBlur}
+                onChangeText={value => field.onChange(value.replace(/[^0-9]/g, ''))}
+                error={errors.tenure?.message}
+                slider={{
+                  value: Number(field.value),
+                  minimumValue: 1,
+                  maximumValue: tenureUnit === 'years' ? 50 : 600,
+                  step: 1,
+                  minimumLabel: tenureUnit === 'years' ? '1 year' : '1 month',
+                  maximumLabel: tenureUnit === 'years' ? '50 years' : '600 months',
+                  valueLabel: `${field.value || '0'} ${tenureUnit}`,
+                  onValueChange: value => field.onChange(String(value)),
+                }}
+              />
+            )}
+          />
           <AppButton title="Add to comparison" variant="secondary" onPress={handleSubmit(addOffer)} icon={<Plus color={colors.text} size={18} />} />
         </View>
       ) : null}
@@ -292,21 +308,68 @@ function formatTenure(months: number) {
 
 const styles = StyleSheet.create({
   selector: {gap: 10},
-  loanOption: {borderWidth: 1, borderRadius: 8, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12},
+  loanOption: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   loanCopy: {flex: 1, minWidth: 0},
   loanName: {fontSize: 14, fontWeight: '800', letterSpacing: 0},
   loanTerms: {fontSize: 12, marginTop: 4, letterSpacing: 0},
-  check: {width: 24, height: 24, borderRadius: 4, borderWidth: 1, alignItems: 'center', justifyContent: 'center'},
-  emptyText: {fontSize: 14, lineHeight: 21, textAlign: 'center', paddingVertical: 28, letterSpacing: 0},
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    paddingVertical: 28,
+    letterSpacing: 0,
+  },
   selectionHint: {fontSize: 11, fontWeight: '800', letterSpacing: 0},
   chart: {borderWidth: 1, borderRadius: 8, padding: 16, overflow: 'hidden'},
-  chartTitle: {fontSize: 16, fontWeight: '800', marginBottom: 18, letterSpacing: 0},
-  chartCaption: {fontSize: 12, lineHeight: 17, marginTop: -12, marginBottom: 18, letterSpacing: 0},
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 18,
+    letterSpacing: 0,
+  },
+  chartCaption: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: -12,
+    marginBottom: 18,
+    letterSpacing: 0,
+  },
   axisLabel: {fontSize: 10},
   manualSection: {gap: 10},
-  savedOffer: {borderWidth: 1, borderRadius: 8, padding: 14, flexDirection: 'row', alignItems: 'center'},
-  removeButton: {width: 40, height: 40, alignItems: 'center', justifyContent: 'center'},
+  savedOffer: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  removeButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   offerForm: {borderTopWidth: 1, paddingTop: 18, gap: 16, marginTop: 4},
   formTitle: {fontSize: 16, fontWeight: '800', letterSpacing: 0},
-  formCaption: {fontSize: 12, lineHeight: 17, marginTop: -10, letterSpacing: 0},
+  formCaption: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: -10,
+    letterSpacing: 0,
+  },
 });
